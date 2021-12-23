@@ -11,8 +11,9 @@ program
   .action((url, option) => {
     loadPage(url, option.output)
       .then((res) => console.log(`Open ${res}`))
-      .catch(({ message }) => {
-        console.error(message);
+      .catch((err) => {
+        console.log(err);
+        console.error(err.message);
         process.exit(1);
       });
   })

@@ -16,39 +16,60 @@ const __dirname = path.dirname(__filename);
 const getFixturePath = (filename) => path.join(__dirname, '..', '__fixtures__', filename);
 const readFile = (name, encoding = null) => fs.readFile(getFixturePath(name), encoding);
 
-const sourceData = 'source.html';
-const resultData = 'result.html';
-const image = 'nodejs.png';
+const htmlData = {
+  inputFileData: readFile('source.html', 'utf-8'),
+  expectedFileName: 'ru-hexlet-io-courses.html',
+  expectedFileData: readFile('result.html', 'utf-8'),
+};
 
-let data;
-let expected;
+const url = /ru\.hexlet\.io/;
+const outputAssetsDir = 'ru-hexlet-io-courses_files';
+
+const testData = [
+  {
+    testName: 'test/img',
+    fileData: readFile('nodejs.png', 'utf-8'),
+    pathUrl: /\/assets\/professions\/nodejs\.png/,
+    outputFilename: 'ru-hexlet-io-assets-professions-nodejs.png',
+  },
+  {
+    testName: 'test/css',
+    fileData: readFile('menu.css', 'utf-8'),
+    pathUrl: /\/assets\/application\.css/,
+    outputFilename: 'ru-hexlet-io-assets-application.css',
+  },
+  {
+    testName: 'test/js',
+    fileData: readFile('runtime.js', 'utf-8'),
+    pathUrl: /\/packs\/js\/runtime\.js/,
+    outputFilename: 'ru-hexlet-io-packs-js-runtime.js',
+  },
+];
+
 let dest;
-let fileData;
+let outputHtmlPath;
 
 beforeAll(async () => {
-  data = await readFile(sourceData, 'utf-8');
-  fileData = await readFile(image);
-  expected = await readFile(resultData, 'utf-8');
-});
-
-beforeEach(async () => {
   dest = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
-});
-
-test('loader formated', async () => {
-  nock(/ru\.hexlet\.io/)
+  nock(url)
     .get(/\/courses/)
     .twice()
-    .reply(200, data);
-  nock(/ru\.hexlet\.io/)
-    .get(/\/assets\/professions\/nodejs\.png/)
-    .twice()
-    .reply(200, fileData);
-  await loadPage('https://ru.hexlet.io/courses/', dest);
-  const filePathHtml = path.join(dest, 'ru-hexlet-io-courses.html');
-  const actualHtml = await fs.readFile(filePathHtml, 'utf-8');
-  const filePathPng = path.join(dest, 'ru-hexlet-io-courses_files', 'ru-hexlet-io-assets-professions-nodejs.png');
-  const actualPng = await fs.readFile(filePathPng);
-  expect(actualHtml.trim()).toEqual(expected.trim());
-  expect(actualPng).toEqual(fileData);
+    .reply(200, await htmlData.inputFileData);
+  testData.forEach(async ({ fileData, pathUrl }) => {
+    nock(url).get(pathUrl).twice().reply(200, await fileData);
+  });
+  outputHtmlPath = await loadPage('https://ru.hexlet.io/courses/', dest);
+});
+
+test('test/html', async () => {
+  const actualHtml = await fs.readFile(outputHtmlPath, 'utf-8');
+  const expected = await htmlData.expectedFileData;
+  expect(actualHtml).toEqual(expected);
+});
+
+test.each(testData)('$testName', async ({ fileData, outputFilename }) => {
+  const expected = await fileData;
+  const filePath = path.join(dest, outputAssetsDir, outputFilename);
+  const actual = await fs.readFile(filePath, 'utf-8');
+  expect(actual).toEqual(expected);
 });

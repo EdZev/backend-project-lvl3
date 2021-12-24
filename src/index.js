@@ -4,19 +4,32 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import convertUrlToSlugName from './convertUrlToSlugName.js';
 
+const resourcesTypes = [
+  { tag: 'img', attr: 'src' },
+  { tag: 'link', attr: 'href' },
+  { tag: 'script', attr: 'src' },
+];
+
 const getPage = (url) => axios.get(url)
   .then(({ data }) => cheerio.load(data, { decodeEntities: false }));
 
-const parsePage = (localPath, targetUrl, page) => {
-  const sources = page('img').toArray().reduce((acc, element) => {
-    const src = new URL(element.attribs.src, targetUrl.href);
-    const { dir, name, ext } = path.parse(element.attribs.src);
-    const filename = `${convertUrlToSlugName(path.join(targetUrl.origin, dir, name))}${ext}`;
+const getProcessedPage = (
+  localPath,
+  targetUrl,
+  page,
+) => {
+  const parsePage = ({ tag, attr }) => page(tag).toArray().reduce((acc, element) => {
+    const attribs = element.attribs[attr];
+    const src = new URL(attribs, targetUrl.href);
+    if (src.origin !== targetUrl.origin) return acc;
+    const { dir, name, ext } = path.parse(src.pathname);
+    const filename = `${convertUrlToSlugName(path.join(targetUrl.origin, dir, name))}${ext === '' ? '.html' : ext}`;
     const localSrc = path.join(localPath, `${filename}`);
-    const link = page(element).attr('src').replace(src.pathname, localSrc);
-    page(element).attr('src', link);
+    const htmlElement = page(element).attr(attr).replace(attribs, localSrc);
+    page(element).attr(attr, htmlElement);
     return [...acc, { src, localSrc }];
   }, []);
+  const sources = resourcesTypes.map((type) => parsePage(type)).flat();
   return { sources, page: page.html() };
 };
 
@@ -36,7 +49,7 @@ export default (url, pathOutput) => {
   const assetsDirPath = path.join(pathOutput, assetsDirName);
 
   return getPage(url)
-    .then((data) => parsePage(assetsDirName, targetUrl, data))
+    .then((page) => getProcessedPage(assetsDirName, targetUrl, page))
     .then(({ sources, page }) => {
       fs.writeFile(outputFilePath, page, 'utf-8');
       fs.mkdir(assetsDirPath);

@@ -1,8 +1,14 @@
 import fs from 'fs/promises';
 import path from 'path';
 import axios from 'axios';
+import debug from 'debug';
+import 'axios-debug-log';
 import * as cheerio from 'cheerio';
 import convertUrlToSlugName from './convertUrlToSlugName.js';
+
+const log = debug('page-loader');
+const appName = 'page-loader';
+debug('booting %o', appName);
 
 const resourcesTypes = [
   { tag: 'img', attr: 'src' },
@@ -10,14 +16,18 @@ const resourcesTypes = [
   { tag: 'script', attr: 'src' },
 ];
 
-const getPage = (url) => axios.get(url)
-  .then(({ data }) => cheerio.load(data, { decodeEntities: false }));
+const getPage = (url) => {
+  log('GET /', url);
+  return axios.get(url)
+    .then(({ data }) => cheerio.load(data, { decodeEntities: false }));
+};
 
 const getProcessedPage = (
   localPath,
   targetUrl,
   page,
 ) => {
+  log('PARSE /', targetUrl.href);
   const parsePage = ({ tag, attr }) => page(tag).toArray().reduce((acc, element) => {
     const attribs = element.attribs[attr];
     const src = new URL(attribs, targetUrl.href);
@@ -33,13 +43,16 @@ const getProcessedPage = (
   return { sources, page: page.html() };
 };
 
-const downloadSources = ({ src, localSrc }, pathOutput) => axios
-  .get(src.href, { responseType: 'arraybuffer' })
-  .then(({ data }) => {
-    const localPathFile = path.join(pathOutput, localSrc);
-    fs.writeFile(localPathFile, data, 'utf-8');
-    return localPathFile;
-  });
+const downloadSources = ({ src, localSrc }, pathOutput) => {
+  log('GET /', src.href);
+  return axios.get(src.href, { responseType: 'arraybuffer' })
+    .then(({ data }) => {
+      const localPathFile = path.join(pathOutput, localSrc);
+      log('write file:', localPathFile);
+      fs.writeFile(localPathFile, data, 'utf-8');
+      return localPathFile;
+    });
+};
 
 export default (url, pathOutput) => {
   const targetUrl = new URL(url);
@@ -51,7 +64,9 @@ export default (url, pathOutput) => {
   return getPage(url)
     .then((page) => getProcessedPage(assetsDirName, targetUrl, page))
     .then(({ sources, page }) => {
+      log('write html to:', outputFilePath);
       fs.writeFile(outputFilePath, page, 'utf-8');
+      log('create dir:', assetsDirPath);
       fs.mkdir(assetsDirPath);
       return sources;
     })

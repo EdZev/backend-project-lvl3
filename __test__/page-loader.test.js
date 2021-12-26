@@ -50,6 +50,7 @@ let dest;
 let outputHtmlPath;
 
 beforeAll(async () => {
+  nock.cleanAll();
   dest = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));
   nock(url)
     .get(/\/courses/)

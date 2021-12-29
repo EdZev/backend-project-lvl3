@@ -4,6 +4,7 @@ import axios from 'axios';
 import debug from 'debug';
 import 'axios-debug-log';
 import * as cheerio from 'cheerio';
+import Listr from 'listr';
 import convertUrlToSlugName from './convertUrlToSlugName.js';
 
 const log = debug('page-loader');
@@ -17,7 +18,7 @@ const resourcesTypes = [
 ];
 
 const getPage = (url) => {
-  log('GET /', url);
+  log('download', url);
   return axios.get(url)
     .then(({ data }) => cheerio.load(data, { decodeEntities: false }));
 };
@@ -27,7 +28,7 @@ const getProcessedPage = (
   targetUrl,
   page,
 ) => {
-  log('PARSE /', targetUrl.href);
+  log('parse html received from', targetUrl.href);
   const parsePage = ({ tag, attr }) => page(tag).toArray().reduce((acc, element) => {
     const attribs = element.attribs[attr];
     const src = new URL(attribs, targetUrl.href);
@@ -43,15 +44,17 @@ const getProcessedPage = (
   return { sources, page: page.html() };
 };
 
-const downloadSources = ({ src, localSrc }, pathOutput) => {
-  log('GET /', src.href);
-  return axios.get(src.href, { responseType: 'arraybuffer' })
-    .then(({ data }) => {
-      const localPathFile = path.join(pathOutput, localSrc);
-      log('write file:', localPathFile);
-      fs.writeFile(localPathFile, data, 'utf-8');
-      return localPathFile;
-    });
+const downloadElements = (sources, pathOutput) => {
+  log('download & save assets');
+  const downloadTasks = sources.map(({ src, localSrc }) => {
+    const localPathFile = path.join(pathOutput, localSrc);
+    return {
+      title: `${src.href} saved to ${localPathFile}`,
+      task: () => axios.get(src.href, { responseType: 'arraybuffer' })
+        .then(({ data }) => fs.writeFile(localPathFile, data, 'utf-8')),
+    };
+  });
+  return new Listr(downloadTasks, { concurrent: true, exitOnError: false }).run();
 };
 
 export default (url, pathOutput) => {
@@ -64,16 +67,14 @@ export default (url, pathOutput) => {
   return getPage(url)
     .then((page) => getProcessedPage(assetsDirName, targetUrl, page))
     .then(({ sources, page }) => {
-      log('write html to:', outputFilePath);
-      fs.writeFile(outputFilePath, page, 'utf-8');
-      log('create dir:', assetsDirPath);
-      fs.mkdir(assetsDirPath);
-      return sources;
+      log('save html to:', outputFilePath);
+      return fs.writeFile(outputFilePath, page, 'utf-8').then(() => sources);
     })
     .then((sources) => {
-      const localPathFile = sources.map((source) => downloadSources(source, pathOutput));
-      return Promise.all(localPathFile);
+      log('create dir:', assetsDirPath);
+      return fs.mkdir(assetsDirPath).then(() => sources);
     })
+    .then((sources) => downloadElements(sources, pathOutput))
     .then(() => outputFilePath)
     .catch((err) => {
       throw err;

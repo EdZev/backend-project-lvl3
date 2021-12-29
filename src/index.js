@@ -59,10 +59,11 @@ const downloadElements = (sources, pathOutput) => {
 
 export default (url, pathOutput) => {
   const targetUrl = new URL(url);
+  const pathToProject = path.resolve(process.cwd(), pathOutput || '');
   const outputFileName = `${convertUrlToSlugName(url)}.html`;
-  const outputFilePath = path.join(pathOutput, outputFileName);
+  const outputFilePath = path.join(pathToProject, outputFileName);
   const assetsDirName = `${convertUrlToSlugName(url)}_files`;
-  const assetsDirPath = path.join(pathOutput, assetsDirName);
+  const assetsDirPath = path.join(pathToProject, assetsDirName);
 
   return getPage(url)
     .then((page) => getProcessedPage(assetsDirName, targetUrl, page))
@@ -74,7 +75,7 @@ export default (url, pathOutput) => {
       log('create dir:', assetsDirPath);
       return fs.mkdir(assetsDirPath).then(() => sources);
     })
-    .then((sources) => downloadElements(sources, pathOutput))
+    .then((sources) => downloadElements(sources, pathToProject))
     .then(() => outputFilePath)
     .catch((err) => {
       throw err;

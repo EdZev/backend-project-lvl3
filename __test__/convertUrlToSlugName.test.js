@@ -1,4 +1,4 @@
-import convertUrlToSlugName from '../src/convertUrlToSlugName.js';
+import { convertUrlToSlugName } from '../src/utils.js';
 
 const urls = [
   { url: 'https://example.com/', expected: 'example-com' },

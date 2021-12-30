@@ -6,7 +6,7 @@ import nock from 'nock';
 import axios from 'axios';
 import httpAdaptor from 'axios/lib/adapters/http';
 
-import loadPage from '../src/index.js';
+import loadPage from '..';
 
 nock.disableNetConnect();
 axios.defaults.adapter = httpAdaptor;
@@ -76,7 +76,7 @@ describe('positive cases', () => {
   });
 });
 
-describe('file system error', () => {
+describe('file system errors', () => {
   beforeAll(async () => {
     nock.cleanAll();
     dest = await fs.mkdtemp(path.join(os.tmpdir(), 'page-loader-'));

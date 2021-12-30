@@ -4,6 +4,18 @@
 [![Maintainability](https://api.codeclimate.com/v1/badges/a6064d5aecb2e261fc6e/maintainability)](https://codeclimate.com/github/EdZev/backend-project-lvl3/maintainability)
 [![Test Coverage](https://api.codeclimate.com/v1/badges/a6064d5aecb2e261fc6e/test_coverage)](https://codeclimate.com/github/EdZev/backend-project-lvl3/test_coverage)
 
+# Page-loader
+## insatall
+make install
+
+npm link
+
+## use
+page-loader http://google.com
+
+## options
+page-loader --help
+
 #1
 [![asciicast](https://asciinema.org/a/457439.svg)](https://asciinema.org/a/457439)
 

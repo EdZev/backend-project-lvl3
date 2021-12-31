@@ -16,8 +16,11 @@ page-loader http://google.com
 ## options
 page-loader --help
 
-#1
-[![asciicast](https://asciinema.org/a/457439.svg)](https://asciinema.org/a/457439)
+### install & use
+![](media/use-page-loader.gif)
 
-#2
-[![asciicast](https://asciinema.org/a/458245.svg)](https://asciinema.org/a/458245)
+### use debug
+![](media/use-page-loader-debug.gif)
+
+### errors
+![](media/page-loader-errors.gif)
